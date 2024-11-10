@@ -45,15 +45,13 @@ run_posttest() {
 
 check_memory_leaks() {
     local log_file=$1
-    local success_msg=$2
-    local fail_msg=$3
-    local check_str=$4
+    local check_str=$2
 
     if grep -q "$check_str" "$log_file"; then
         printf "Leak: ${GREEN}pass${NC}\n"
     else
         printf "Leak: ${RED}fail${NC}\n"
-        cat "$log_file"
+        # cat "$log_file"
         RET=1
     fi
     rm "$log_file"
@@ -101,7 +99,8 @@ for file in "${input_dir}"/*; do
         echo "Error: All files in ${input_dir} must have a .in extension"
         exit 1
     fi
-    expected_file="${expected_output_dir}/$(basename "${file}").expected"
+    basefile=$(basename "${file}" .in)
+    expected_file="${expected_output_dir}/${basefile}.expected"
     if [[ ! -f "${expected_file}" ]]; then
         echo "Error: Missing corresponding expected output file for ${file}"
         exit 1
@@ -119,16 +118,16 @@ RET=0
 
 for i in ${input_dir}/*.in
 do
-    printf "test $i >>>  "
+    printf "test $i >>>  \n"
 
     # Run pretest script if it exists
     run_pretest $i
-
+    
+    base_filename=$(basename "$i" .in)
     # Execute the main executable with the input file and create an output file
-    ./${executable} < $i > ${i%.*}e.out
-
+    ./${executable} < $i > ${base_filename}.out
     # Compare the output file with the expected output file
-    diff ${i%.*}e.out ${expected_output_dir}/${i##*/}.expected
+    diff ${base_filename}.out ${expected_output_dir}/${base_filename}.expected
     if [ $? -ne 0 ]; then
         printf "${RED}Diff failed${NC}\n"
         RET=1
@@ -136,17 +135,20 @@ do
         printf "Diff: ${GREEN}pass${NC}\n"
     fi
 
-    rm ${i%.*}e.out
+    rm ${base_filename}.out
 
     
     if [ $IS_MAC -eq 0 ]; then
         # Perform memory leak check using valgrind if not on macOS
-        valgrind --leak-check=full ./${executable} < $i &> ${i%.*}.valgrind_log
-        check_memory_leaks "${i%.*}.valgrind_log" "Leak: ${GREEN}pass${NC}" "Leak: ${RED}fail${NC}" "ERROR SUMMARY: 0"
+        valgrind_command="valgrind --leak-check=full ./${executable} < $i &> ${base_filename}.valgrind_log"
+        eval $valgrind_command > /dev/null 2>&1
+        check_memory_leaks "${base_filename}.valgrind_log" "ERROR SUMMARY: 0"
     else
         # Perform memory leak check on macOS
-        leaks_result=$(0MallocStackLogging=1 leaks -quiet -atExist -- ./${executable} < $i > ${i%.*}v.out 1>/dev/null 2>/dev/null)
-        check_memory_leaks "${i%.*}.leaks_log" "Leak: ${GREEN}pass${NC}" "Leak: ${RED}fail${NC}" "0 leaks for 0 total leaked bytes"
+        leaks_command="MallocStackLogging=1 leaks -quiet --atExit -- ./${executable} < $i &> ${base_filename}.leaks_log"
+        # Execute the command and redirect both stdout and stderr to /dev/null to suppress all output
+        eval $leaks_command > /dev/null 2>&1
+        check_memory_leaks "${base_filename}.leaks_log" "0 leaks for 0 total leaked bytes"
     fi
 
     # Run posttest script if it exists
