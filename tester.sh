@@ -54,7 +54,6 @@ check_memory_leaks() {
         # cat "$log_file"
         RET=1
     fi
-    rm "$log_file"
 }
 
 while getopts ":he:i:o:" opt; do
@@ -143,12 +142,14 @@ do
         valgrind_command="valgrind --leak-check=full ./${executable} < $i &> ${base_filename}.valgrind_log"
         eval $valgrind_command > /dev/null 2>&1
         check_memory_leaks "${base_filename}.valgrind_log" "ERROR SUMMARY: 0"
+        rm "${base_filename}.valgrind_log"
     else
         # Perform memory leak check on macOS
         leaks_command="MallocStackLogging=1 leaks -quiet --atExit -- ./${executable} < $i &> ${base_filename}.leaks_log"
         # Execute the command and redirect both stdout and stderr to /dev/null to suppress all output
         eval $leaks_command > /dev/null 2>&1
         check_memory_leaks "${base_filename}.leaks_log" "0 leaks for 0 total leaked bytes"
+        rm "${base_filename}.leaks_log"
     fi
 
     # Run posttest script if it exists
