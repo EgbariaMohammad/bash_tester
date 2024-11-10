@@ -4,13 +4,13 @@ GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
 show_help() {
-    echo "Usage: $0 -e <executable> -i <input_dir> -eo <expected_output_dir>"
+    echo "Usage: $0 -e <executable> -i <input_dir> -o <expected_output_dir>"
     echo "Options:"
     echo "  -h                Show this help message"
     echo "Arguments:"
     echo "  -e <executable>   The executable to run the tests on"
     echo "  -i <input_dir>    The directory containing the test input files"
-    echo "  -eo <expected_output_dir> The directory containing the expected output files"
+    echo "  -o <expected_output_dir> The directory containing the expected output files"
 }
 
 run_pretest() {
@@ -59,7 +59,7 @@ check_memory_leaks() {
     rm "$log_file"
 }
 
-while getopts ":he:i:eo:" opt; do
+while getopts ":he:i:o:" opt; do
     case ${opt} in
         h )
             show_help
@@ -71,7 +71,7 @@ while getopts ":he:i:eo:" opt; do
         i )
             input_dir=$OPTARG
             ;;
-        eo )
+        o )
             expected_output_dir=$OPTARG
             ;;
         \? )
